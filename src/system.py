@@ -27,6 +27,9 @@ class OperatingSystem():
         print(f"Welcome to {self.Meta.NAME} OS!")
 
     def process(self, command: str, args: list) -> bool:
+        if command is None:
+            return True
+
         if command == "cd":
             self.process_cd(args)
         elif command == "ls":
@@ -34,6 +37,8 @@ class OperatingSystem():
         elif command == "exit":
             self.process_exit()
             return False
+        else:
+            print(f"Error: Unknown command {command}")
         
         return True
 
@@ -41,7 +46,7 @@ class OperatingSystem():
         print("cd " + ' '.join(args))
 
     def process_ls(self, args: list) -> None:
-        print("cd " + ' '.join(args))
+        print("ls " + ' '.join(args))
 
     def process_exit(self) -> None:
         print("Shutting down")
