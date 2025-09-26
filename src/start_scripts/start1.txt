@@ -1,4 +1,6 @@
 cd "dklskds dsdlskdls"
-# line with comment
+ls
+kcklclkslk
+cd dddd
 ls
 exit

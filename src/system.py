@@ -43,7 +43,7 @@ class OperatingSystem:
 
     def _debug_print(self) -> None:
         tprint("=== Emulator Config (Debug) ===")
-        tprint(f"VFS path: {self.vfs_path if self.vfs_path else 'none'}")
+        tprint(f"VFS path: {self.vfs_path.resolve() if self.vfs_path else 'none'}")
         tprint(f"Start script: {self.start_script if self.start_script else 'none'}")
         tprint(f"Debug: {self.debug}")
         tprint("===============================")
@@ -75,7 +75,7 @@ class OperatingSystem:
 
     def _run_start_script(self, path: Path) -> None:
         if not path.exists():
-            tprint("[Error] Start script path does not exist.")
+            tprint("Error: Start script path does not exist.")
             return
         
         tprint(f"=== Running start script: {path} ===")
@@ -85,14 +85,9 @@ class OperatingSystem:
             for line in f:
                 line = line.strip()
                 tprint(f"{self.Meta.USERNAME}@{self.Meta.NAME} OS [{self.current_path}] ~ {line}")
-                
-                if not line or line.startswith('#'):
-                    continue
 
                 try:
                     command, args = parse(line)
-                    if not command:
-                        continue
 
                     self.process(command, args)
                 except UnknownCommand as e:
@@ -102,7 +97,7 @@ class OperatingSystem:
                 
                 time.sleep(1)
                 
-            tprint(f"=== Start script execution completed {'with error' if with_error else 'successful'} ===\n")
+            tprint(f"=== Start script execution completed {'with error' if with_error else 'successfuly'} ===\n")
 
     def _mainloop(self) -> None:
         while True:
