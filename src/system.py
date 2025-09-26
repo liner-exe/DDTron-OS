@@ -100,7 +100,7 @@ class OperatingSystem:
                 
                 time.sleep(1)
                 
-            tprint(f"=== Start script execution completed {'with error' if with_error else ''}===\n")
+            tprint(f"=== Start script execution completed {'with error' if with_error else 'successful'} ===\n")
 
     def _mainloop(self) -> None:
         while True:
