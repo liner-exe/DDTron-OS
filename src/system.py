@@ -84,6 +84,8 @@ class OperatingSystem:
         with path.open("r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
+                tprint(f"{self.Meta.USERNAME}@{self.Meta.NAME} OS [{self.current_path}] ~ {line}")
+                
                 if not line or line.startswith('#'):
                     continue
 
