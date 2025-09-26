@@ -1,0 +1,4 @@
+cd dlldkfkd
+cd fkkkf
+ls
+exit
