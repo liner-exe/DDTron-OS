@@ -1,0 +1,5 @@
+<vfs>
+    <dir name="root">
+        <file name="example.txt">This is an example file.</file>
+    </dir>
+</vfs>

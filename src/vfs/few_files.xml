@@ -1,0 +1,6 @@
+<vfs>
+    <dir name="root">
+        <file name="fileA.txt">Content of file A.</file>
+        <file name="fileB.txt">Content of file B.</file>
+    </dir>
+</vfs>

@@ -1,0 +1,14 @@
+<vfs>
+    <dir name="root">
+        <dir name="folder1">
+            <file name="file1.txt">Content of file 1 in folder 1.</file>
+            <file name="file2.txt">Content of file 2 in folder 1.</file>
+        </dir>
+        <dir name="folder2">
+            <dir name="subfolder1">
+                <file name="file3.txt">Content of file 3 in subfolder 1.</file>
+            </dir>
+        </dir>
+        <file name="code.html">PHRpdGxlPnRpdGxlPC90aXRsZT4=</file>
+    </dir>
+</vfs>

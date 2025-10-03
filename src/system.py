@@ -1,8 +1,10 @@
 from parser import parse
 from pathlib import Path
 import time
+import xml.etree.ElementTree as ET
+import base64
 
-from exceptions import UnknownCommand
+from exceptions import UnknownCommand, BrokenFormat
 from utils import tprint
 
 class OperatingSystem:
@@ -32,6 +34,9 @@ class OperatingSystem:
 
         if self.debug:
             self._debug_print()
+
+        if self.vfs_path:
+            self.load_vfs(self.vfs_path)
 
         self.startup()
 
@@ -120,3 +125,64 @@ class OperatingSystem:
             self._run_start_script(self.start_script)
 
         self._mainloop()
+
+    def load_vfs(self, path: Path) -> None:
+        try:
+            tprint("loading vfs")
+
+            tree = ET.parse(path)
+            root = tree.getroot()
+
+            if root.tag != "vfs":
+                tprint("Error: Invalid VFS file format.")
+                return
+            
+            root_dir = root.find('dir', namespaces={'name': 'root'})
+
+            if root_dir.attrib.get('name') != 'root':
+                tprint("Error: VFS root directory not found.")
+                return
+            
+            try:
+                self.vfs_root = self._parse_vfs_element(root_dir)
+            except Exception as e:
+                tprint(f"Error parsing VFS: {e}")
+                return
+            
+            if self.vfs_root == {}:
+                tprint("Error: VFS root directory is empty or malformed.")
+                return
+
+            print(self.vfs_root)
+
+        except FileNotFoundError:
+            tprint("Error: VFS file not found.")
+            return
+        
+    def _parse_vfs_element(self, element: ET.Element):
+        if element is None:
+            raise BrokenFormat("Error: VFS element is None")
+        
+        name = element.get('name', 'unknown')
+        item = {'type': element.tag, 'name': name, 'content': {}}
+
+        if name == 'unknown':
+            raise BrokenFormat("Error: VFS element missing 'name' attribute.")
+
+        if element.tag == 'dir':
+            for child in element:
+                child_data = self._parse_vfs_element(child)
+                item['content'][child_data['name']] = child_data
+        elif element.tag == 'file':
+            data = element.text or ''
+            encoding = element.get('encoding')
+
+            if encoding == 'base64':
+                try:
+                    item['content']= base64.b64decode(data).decode('utf-8', errors='ignore')
+                except Exception as e:
+                    print(e)
+            else:
+                item['content'] = data
+
+        return item
