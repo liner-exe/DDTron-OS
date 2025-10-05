@@ -6,6 +6,7 @@ import base64
 
 from exceptions import UnknownCommand, BrokenFormat
 from utils import tprint
+from vfs_node import VFSNode
 
 class OperatingSystem:
     current_path = "root"
@@ -31,20 +32,21 @@ class OperatingSystem:
         self.vfs_path = Path(vfs_path) if vfs_path else None
         self.start_script = Path(start_script) if start_script else None
         self.debug = debug
+        self.filesystem_support = False
+
+        self.startup()
 
         if self.debug:
             self._debug_print()
 
         if self.vfs_path:
-            self.load_vfs(self.vfs_path)
-
-        self.startup()
-
+            self.filesystem_support = self.load_vfs(self.vfs_path)
+        
     def startup(self) -> None:
         tprint(self.art, delay=0.001)
         tprint(f"{self.Meta.NAME} OS v{self.Meta.VERSION_MAJOR}.{self.Meta.VERSION_MINOR} ({self.Meta.SYSTEM_TYPE})")
         tprint(f"Kernel {self.Meta.VERSION_MAJOR}.{self.Meta.VERSION_MINOR}-{self.Meta.NAME} on VM\n")
-        tprint(f"Welcome to {self.Meta.NAME} OS!")
+        tprint(f"Welcome to {self.Meta.NAME} OS!\n")
 
     def _debug_print(self) -> None:
         tprint("=== Emulator Config (Debug) ===")
@@ -121,68 +123,77 @@ class OperatingSystem:
                 tprint(str(e))
 
     def run(self) -> None:
+        if not self.filesystem_support:
+            tprint("Critical: System won't run without filesystem.")
+            return
+
         if self.start_script:
             self._run_start_script(self.start_script)
 
         self._mainloop()
 
-    def load_vfs(self, path: Path) -> None:
-        try:
-            tprint("loading vfs")
+    def load_vfs(self, path: Path) -> bool:
+        tprint(f"loading vfs from {path}")
 
+        if not path.exists:
+            tprint(f"Error: VFS file {path} not found.")
+            return False
+
+        try:
             tree = ET.parse(path)
             root = tree.getroot()
+        except ET.ParseError as e:
+            tprint(f"Error: Invalid XML format: {e}")
+            return False
 
-            if root.tag != "vfs":
-                tprint("Error: Invalid VFS file format.")
-                return
-            
-            root_dir = root.find('dir', namespaces={'name': 'root'})
+        if root.tag != "vfs":
+            tprint("Error: VFS root element must be <vfs>.")
+            return False
+        
+        if len(root) == 0:
+            tprint('Error: <vfs> element is empty. Expected <dir name="root"> inside.')
+            return False
+        
+        first_child = root[0]
+        if first_child.tag != "dir" or first_child.attrib.get("name") != "root":
+            print(first_child)
+            tprint('Error: Expected <dir name="root"> directly inside <vfs> element.')
+            return False
+        
+        try:
+            self.vfs_root = self._parse_vfs_element(first_child)
+        except BrokenFormat as e:
+            tprint(str(e))
+            return False
+        except Exception as e:
+            tprint(f"Error parsing VFS: {e}")
+            return False
+        
+        if not self.vfs_root or not self.vfs_root.content:
+            tprint("Error: VFS root directory is empty or malformed.")
+            return False
 
-            if root_dir.attrib.get('name') != 'root':
-                tprint("Error: VFS root directory not found.")
-                return
-            
-            try:
-                self.vfs_root = self._parse_vfs_element(root_dir)
-            except Exception as e:
-                tprint(f"Error parsing VFS: {e}")
-                return
-            
-            if self.vfs_root == {}:
-                tprint("Error: VFS root directory is empty or malformed.")
-                return
-
-            print(self.vfs_root)
-
-        except FileNotFoundError:
-            tprint("Error: VFS file not found.")
-            return
+        tprint("VFS successfully loaded.\n")
+        
+        return True
         
     def _parse_vfs_element(self, element: ET.Element):
         if element is None:
             raise BrokenFormat("Error: VFS element is None")
-        
-        name = element.get('name', 'unknown')
-        item = {'type': element.tag, 'name': name, 'content': {}}
-
-        if name == 'unknown':
-            raise BrokenFormat("Error: VFS element missing 'name' attribute.")
 
         if element.tag == 'dir':
+            node = VFSNode(element.attrib["name"], is_dir=True)
             for child in element:
-                child_data = self._parse_vfs_element(child)
-                item['content'][child_data['name']] = child_data
+                node.add_child(self._parse_vfs_element(child))
+            return node
         elif element.tag == 'file':
-            data = element.text or ''
             encoding = element.get('encoding')
+            data = element.text.strip() or ''
 
             if encoding == 'base64':
                 try:
-                    item['content']= base64.b64decode(data).decode('utf-8', errors='ignore')
-                except Exception as e:
-                    print(e)
-            else:
-                item['content'] = data
-
-        return item
+                    data = base64.b64decode(data).decode(errors="ignore")
+                except:
+                    data = f"Failed to decode data: {data}"
+            
+            return VFSNode(element.attrib["name"], content=data)

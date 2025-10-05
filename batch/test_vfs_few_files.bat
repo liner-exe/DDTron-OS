@@ -5,3 +5,5 @@ cd ..
 cd src
 
 python main.py --vfs="./vfs/few_files.xml" --no-debug
+
+pause
