@@ -5,12 +5,10 @@ import xml.etree.ElementTree as ET
 import base64
 
 from exceptions import UnknownCommand, BrokenFormat
-from utils import tprint
+from utils import tprint, format_duration
 from vfs_node import VFSNode
 
 class OperatingSystem:
-    current_path = "root"
-
     art = r"""
      ____  ____  _____                _____ _____ 
     |    \|    \|_   _|___ ___ ___   |     |   __|
@@ -33,6 +31,7 @@ class OperatingSystem:
         self.start_script = Path(start_script) if start_script else None
         self.debug = debug
         self.filesystem_support = False
+        self.startup_time = time.time()
 
         self.startup()
 
@@ -41,6 +40,8 @@ class OperatingSystem:
 
         if self.vfs_path:
             self.filesystem_support = self.load_vfs(self.vfs_path)
+
+        self.current_node = self.vfs_root
         
     def startup(self) -> None:
         tprint(self.art, delay=0.001)
@@ -63,6 +64,8 @@ class OperatingSystem:
             self.process_cd(args)
         elif command == "ls":
             self.process_ls(args)
+        elif command == "uptime":
+            self.process_uptime()
         elif command == "exit":
             self.process_exit()
             return False
@@ -72,10 +75,34 @@ class OperatingSystem:
         return True
 
     def process_cd(self, args: list) -> None:
-        tprint("cd " + ' '.join(args))
+        if len(args) > 1:
+            tprint("Error: cd supports 1 arguement")
+            return
+        
+        path = args[0]
 
-    def process_ls(self, args: list) -> None:
-        tprint("ls " + ' '.join(args))
+        if path == ".." and self.current_node.get_parent():
+            self.current_node = self.current_node.get_parent()
+        
+        for dir in self.current_node.get_directories():
+            if dir.name == path:
+                self.current_node = dir
+
+    def process_ls(self, args) -> None:
+        print(self.current_node.name)
+
+        for directory in self.current_node.get_directories():
+            print(f"- {directory.name}/")
+
+        for file in self.current_node.get_files():
+            print(f"- {file.name}")
+
+    def process_uptime(self) -> None:
+        uptime = time.time() - self.startup_time
+        tprint(f"Current uptime {format_duration(uptime)}")
+
+    def process_pwd(self) -> None:
+        ...
 
     def process_exit(self) -> None:
         tprint("Shutting down")
@@ -91,7 +118,7 @@ class OperatingSystem:
         with path.open("r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
-                tprint(f"{self.Meta.USERNAME}@{self.Meta.NAME} OS [{self.current_path}] ~ {line}")
+                tprint(f"{self.Meta.USERNAME}@{self.Meta.NAME} OS [{self.current_node.name}] ~ {line}")
 
                 try:
                     command, args = parse(line)
@@ -109,7 +136,7 @@ class OperatingSystem:
     def _mainloop(self) -> None:
         while True:
             try:
-                user_input = input(f"{self.Meta.USERNAME}@{self.Meta.NAME} OS [{self.current_path}] ~ ")
+                user_input = input(f"{self.Meta.USERNAME}@{self.Meta.NAME} OS [{self._get_absolute_path()}] ~ ")
             except (EOFError, KeyboardInterrupt):
                 tprint("\nShutting down...")
                 return
@@ -174,17 +201,22 @@ class OperatingSystem:
             return False
 
         tprint("VFS successfully loaded.\n")
-        
+
         return True
         
-    def _parse_vfs_element(self, element: ET.Element):
+    def _parse_vfs_element(self, element: ET.Element, parent_node = None):
         if element is None:
             raise BrokenFormat("Error: VFS element is None")
+        
+        name = element.attrib.get("name")
+        if not name:
+            raise BrokenFormat(f'Error: VFS element <{element.tag}> is missing "name" attribute.')
 
         if element.tag == 'dir':
-            node = VFSNode(element.attrib["name"], is_dir=True)
+            node = VFSNode(element.attrib["name"], is_dir=True, parent=parent_node)
             for child in element:
-                node.add_child(self._parse_vfs_element(child))
+                child_node = self._parse_vfs_element(child, parent_node=node)
+                node.add_child(child_node)
             return node
         elif element.tag == 'file':
             encoding = element.get('encoding')
@@ -196,4 +228,19 @@ class OperatingSystem:
                 except:
                     data = f"Failed to decode data: {data}"
             
-            return VFSNode(element.attrib["name"], content=data)
+            return VFSNode(element.attrib["name"], content=data, parent=parent_node)
+        else:
+            raise BrokenFormat(f"Error: Unknown VFS element tag: <{element.tag}>")
+        
+    def _get_absolute_path(self):
+        current_node = self.current_node
+
+        if not current_node.get_parent():
+            return "root"
+        
+        path = ""
+        while (current_node.get_parent() != None):
+            path = "/" + current_node.name + path
+            current_node = current_node.get_parent()
+
+        return "root" + path
