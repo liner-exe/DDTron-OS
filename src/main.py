@@ -1,6 +1,7 @@
 import argparse
 
 from system import OperatingSystem
+import utils
 
 def main():
     parser = argparse.ArgumentParser(description="DDTron OS Emulator")

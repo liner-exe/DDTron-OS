@@ -66,6 +66,8 @@ class OperatingSystem:
             self.process_ls(args)
         elif command == "uptime":
             self.process_uptime()
+        elif command == "pwd":
+            self.process_pwd()
         elif command == "exit":
             self.process_exit()
             return False
@@ -75,21 +77,37 @@ class OperatingSystem:
         return True
 
     def process_cd(self, args: list) -> None:
+        if len(args) == 0:
+            self.current_node = self.vfs_root
+            return
+
         if len(args) > 1:
-            tprint("Error: cd supports 1 arguement")
+            tprint("Error: cd requires only 1 arguement.")
             return
         
-        path = args[0]
+        path: str = args[0].strip()
+        target_node = None
 
-        if path == ".." and self.current_node.get_parent():
-            self.current_node = self.current_node.get_parent()
-        
-        for dir in self.current_node.get_directories():
-            if dir.name == path:
-                self.current_node = dir
+        if path.startswith('"') and path.endswith('"'):
+                path = path.strip('"')
+
+        if path == "/" or path == "root":
+            target_node = self.vfs_root  
+        elif path.startswith('/'):
+            target_node = self._parse_path(path.lstrip('/'), start_node=self.vfs_root)
+        else:
+            target_node = self._parse_path(path, start_node=self.current_node)
+
+        if target_node:
+            if target_node.is_dir:
+                self.current_node = target_node
+            else:
+                tprint(f"Error: {path} is not a directory.")
+        else:
+            ...
 
     def process_ls(self, args) -> None:
-        print(self.current_node.name)
+        tprint(self.current_node.name)
 
         for directory in self.current_node.get_directories():
             print(f"- {directory.name}/")
@@ -102,10 +120,10 @@ class OperatingSystem:
         tprint(f"Current uptime {format_duration(uptime)}")
 
     def process_pwd(self) -> None:
-        ...
+        tprint(self._get_absolute_path())
 
     def process_exit(self) -> None:
-        tprint("Shutting down")
+        tprint("Shutting down...")
 
     def _run_start_script(self, path: Path) -> None:
         if not path.exists():
@@ -244,3 +262,31 @@ class OperatingSystem:
             current_node = current_node.get_parent()
 
         return "root" + path
+    
+    def _parse_path(self, path: str, start_node: VFSNode):
+        if not path:
+            return start_node
+        
+        components = [char for char in path.split('/') if char]
+        current = start_node
+
+        for component in components:
+            if component == '.':
+                continue
+            elif component == '..':
+                if current.get_parent():
+                    current = current.get_parent()
+                continue
+
+            found = None
+            for child in current.get_directories():
+                if child.name == component:
+                    found = child
+                    break
+            
+            if found:
+                current = found
+            else:
+                return None
+        
+        return current
