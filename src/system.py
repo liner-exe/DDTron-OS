@@ -40,8 +40,7 @@ class OperatingSystem:
 
         if self.vfs_path:
             self.filesystem_support = self.load_vfs(self.vfs_path)
-
-        self.current_node = self.vfs_root
+            self.current_node = self.vfs_root
         
     def startup(self) -> None:
         tprint(self.art, delay=0.001)
@@ -107,13 +106,16 @@ class OperatingSystem:
             tprint("System can't find specified path.")
 
     def process_ls(self, args) -> None:
-        tprint(self.current_node.name)
+        if len(args) == 0:
+            tprint(self.current_node.name)
 
-        for directory in self.current_node.get_directories():
-            print(f"- {directory.name}/")
+            for directory in self.current_node.get_directories():
+                print(f"- {directory.name}/")
 
-        for file in self.current_node.get_files():
-            print(f"- {file.name}")
+            for file in self.current_node.get_files():
+                print(f"- {file.name}")
+        else:
+            tprint("Error: Unexpected arguements: {0}".format(' '.join(args[0:])))
 
     def process_uptime(self) -> None:
         uptime = time.time() - self.startup_time
