@@ -1,6 +1,4 @@
-cd "dklskds dsdlskdls"
+cd "test folder"
 ls
-kcklclkslk
-cd DD
-ls
-exit
+pwd
+uptime

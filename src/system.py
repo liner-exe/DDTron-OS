@@ -30,7 +30,7 @@ class OperatingSystem:
         self.vfs_path = Path(vfs_path) if vfs_path else None
         self.start_script = Path(start_script) if start_script else None
         self.debug = debug
-        self.filesystem_support = False
+        self.is_filesystem_supported = False
         self.startup_time = time.time()
 
         self.startup()
@@ -39,7 +39,7 @@ class OperatingSystem:
             self._debug_print()
 
         if self.vfs_path:
-            self.filesystem_support = self.load_vfs(self.vfs_path)
+            self.is_filesystem_supported = self.load_vfs(self.vfs_path)
             self.current_node = self.vfs_root
         
     def startup(self) -> None:
@@ -60,9 +60,9 @@ class OperatingSystem:
             raise UnknownCommand("Error: No command provided")
 
         if command == "cd":
-            self.process_cd(args)
+            return self.process_cd(args)
         elif command == "ls":
-            self.process_ls(args)
+            return self.process_ls(args)
         elif command == "uptime":
             self.process_uptime()
         elif command == "pwd":
@@ -75,14 +75,14 @@ class OperatingSystem:
         
         return True
 
-    def process_cd(self, args: list) -> None:
+    def process_cd(self, args: list) -> bool:
         if len(args) == 0:
             self.current_node = self.vfs_root
-            return
+            return True
 
         if len(args) > 1:
             tprint("Error: cd requires only 1 arguement.")
-            return
+            return False
         
         path: str = args[0].strip()
         target_node = None
@@ -100,12 +100,15 @@ class OperatingSystem:
         if target_node:
             if target_node.is_dir:
                 self.current_node = target_node
+                return True
             else:
                 tprint(f"Error: {path} is not a directory.")
+                return False
         else:
             tprint("System can't find specified path.")
+            return False
 
-    def process_ls(self, args) -> None:
+    def process_ls(self, args: list) -> bool:
         if len(args) == 0:
             tprint(self.current_node.name)
 
@@ -114,8 +117,11 @@ class OperatingSystem:
 
             for file in self.current_node.get_files():
                 print(f"- {file.name}")
+
+            return True
         else:
             tprint("Error: Unexpected arguements: {0}".format(' '.join(args[0:])))
+            return False
 
     def process_uptime(self) -> None:
         uptime = time.time() - self.startup_time
@@ -133,7 +139,7 @@ class OperatingSystem:
             return
         
         tprint(f"=== Running start script: {path} ===")
-        with_error = False
+        script_success = True
 
         with path.open("r", encoding="utf-8") as f:
             for line in f:
@@ -142,16 +148,24 @@ class OperatingSystem:
 
                 try:
                     command, args = parse(line)
+                    command_success = self.process(command, args)
 
-                    self.process(command, args)
+                    if not command_success:
+                        if command == "exit":
+                            tprint("=== Start script terminated by exit command ===")
+                            return
+                        else:
+                            script_success = False
+                            break
                 except UnknownCommand as e:
                     tprint(str(e))
-                    with_error = True
+                    script_success = False
                     break
                 
                 time.sleep(1)
-                
-            tprint(f"=== Start script execution completed {'with error' if with_error else 'successfuly'} ===\n")
+
+            status = "with errors" if not script_success else "successfuly"
+            tprint(f"=== Start script execution completed {status} ===\n")
 
     def _mainloop(self) -> None:
         while True:
@@ -161,16 +175,17 @@ class OperatingSystem:
                 tprint("\nShutting down...")
                 return
 
-            command, args = parse(user_input)
-
             try:
-                if not self.process(command, args):
-                    break
+                command, args = parse(user_input)
+                should_continue = self.process(command, args)
+
+                if not should_continue and command == "exit":
+                    break 
             except UnknownCommand as e:
                 tprint(str(e))
 
     def run(self) -> None:
-        if not self.filesystem_support:
+        if not self.is_filesystem_supported:
             tprint("Critical: System won't run without filesystem.")
             return
 
@@ -203,7 +218,6 @@ class OperatingSystem:
         
         first_child = root[0]
         if first_child.tag != "dir" or first_child.attrib.get("name") != "root":
-            print(first_child)
             tprint('Error: Expected <dir name="root"> directly inside <vfs> element.')
             return False
         
@@ -252,7 +266,7 @@ class OperatingSystem:
         else:
             raise BrokenFormat(f"Error: Unknown VFS element tag: <{element.tag}>")
         
-    def _get_absolute_path(self):
+    def _get_absolute_path(self) -> str:
         current_node = self.current_node
 
         if not current_node.get_parent():
