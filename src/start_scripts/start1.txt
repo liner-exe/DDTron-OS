@@ -1,6 +1,6 @@
 cd "dklskds dsdlskdls"
 ls
 kcklclkslk
-cd dddd
+cd DD
 ls
 exit

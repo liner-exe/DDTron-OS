@@ -10,5 +10,8 @@
             </dir>
         </dir>
         <file name="code.html" encoding="base64">PHRpdGxlPnRpdGxlPC90aXRsZT4=</file>
+        <dir name="test folder">
+            <file name="test.txt">Content of test file in test folder.</file>
+        </dir>
     </dir>
 </vfs>

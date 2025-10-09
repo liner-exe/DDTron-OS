@@ -104,7 +104,7 @@ class OperatingSystem:
             else:
                 tprint(f"Error: {path} is not a directory.")
         else:
-            ...
+            tprint("System can't find specified path.")
 
     def process_ls(self, args) -> None:
         tprint(self.current_node.name)
@@ -136,7 +136,7 @@ class OperatingSystem:
         with path.open("r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
-                tprint(f"{self.Meta.USERNAME}@{self.Meta.NAME} OS [{self.current_node.name}] ~ {line}")
+                tprint(f"{self.Meta.USERNAME}@{self.Meta.NAME} OS [{self._get_absolute_path()}] ~ {line}")
 
                 try:
                     command, args = parse(line)

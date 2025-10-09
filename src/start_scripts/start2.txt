@@ -1,4 +1,6 @@
 cd dlldkfkd
 cd fkkkf
 ls
+pwd
+uptime
 exit

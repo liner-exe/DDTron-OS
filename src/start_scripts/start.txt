@@ -1,3 +1,11 @@
-cd ldldl
-ls ldldld
-sdlsld lsld;sd;ls
+cd folder1
+cd /
+ls
+cd folder2/subfolder1
+cd /
+cd "test folder"
+uptime
+pwd
+cd ..
+cd folder2
+exit
